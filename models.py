@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, DateTime
 from database import Base
 
 class OAuth(Base):
@@ -11,3 +11,13 @@ class OAuth(Base):
     team_id = Column(String, nullable=False)
     team_name = Column(String, nullable=False)
     user_id = Column(String, nullable=False)
+
+
+class Match(Base):
+    __tablename__ = 'match'
+
+    id = Column(Integer, nullable=False, primary_key=True)
+    winner = Column(String, nullable=False)
+    loser = Column(String, nullable=False)
+    team_id = Column(String, nullable=False)
+    timestamp = Column(DateTime, nullable=False)
