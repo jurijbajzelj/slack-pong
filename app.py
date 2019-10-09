@@ -99,7 +99,7 @@ def won():
 
     output = ''
     for user, win_percentage in sorted_percentages:
-        output += f"\n<@{user}> win percentage {win_percentage}% (games played: {match_history[user]['wins'] + match_history[user]['losses']})"
+        output += f"\n<@{user}> win percentage {win_percentage}% (W: {match_history[user]['wins']} L: {match_history[user]['losses']})"
 
     response = {
         'response_type': 'in_channel',
