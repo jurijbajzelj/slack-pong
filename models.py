@@ -13,6 +13,14 @@ class OAuth(Base):
     user_id = Column(String, nullable=False)
 
 
+class User(Base):
+    __tablename__ = 'user'
+
+    id = Column(Integer, primary_key=True)
+    slack_user_id = Column(String, nullable=False, index=True)
+    nickname = Column(String, nullable=True)
+
+
 class Match(Base):
     __tablename__ = 'match'
 

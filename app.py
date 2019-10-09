@@ -67,7 +67,7 @@ def won():
     assert f'{version}={my_signature}' == x_slack_signature
 
     winner = request.form['user_id']
-    loser = request.form['text'].split('<@')[1].split('|')[0].split('>')[0]
+    loser = request.form['text'].strip().split('<@')[1].split('|')[0].split('>')[0]
     team_id = request.form['team_id']
     timestamp = datetime.now().replace(microsecond=0)
 
