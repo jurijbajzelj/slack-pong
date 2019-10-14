@@ -53,6 +53,7 @@ jobs:
             SLACK_APP_PONG_DATABASE_URL: postgres://some:@localhost:5432/some
             SLACK_APP_PONG_CLIENT_ID: -1
             SLACK_APP_PONG_CLIENT_SECRET: -1
+            SLACK_APP_PONG_SIGNING_SECRET: 'some_secret'
 
       - store_artifacts:
           path: test-reports
