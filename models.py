@@ -1,5 +1,9 @@
 from sqlalchemy import Column, Integer, String, DateTime
-from database import Base
+from sqlalchemy.ext import declarative
+
+
+Base = declarative.declarative_base()
+
 
 class OAuth(Base):
     __tablename__ = 'oauth'
