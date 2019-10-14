@@ -14,7 +14,7 @@ app = Flask(__name__)
 
 CLIENT_ID = os.environ['SLACK_APP_PONG_CLIENT_ID']
 CLIENT_SECRET = os.environ['SLACK_APP_PONG_CLIENT_SECRET']
-SIGNING_SECRET = os.environ['SLACK_APP_PONG_SIGNING_SECRET']
+assert 'SLACK_APP_PONG_SIGNING_SECRET' in os.environ
 
 @app.teardown_appcontext
 def shutdown_session(exception=None):
@@ -65,7 +65,11 @@ def authorize(f):
             version = x_slack_signature.split('=')[0]
             x_slack_request_timestamp = request.headers['X-Slack-Request-Timestamp']
             sig_basestring = f'{version}:{x_slack_request_timestamp}:{request_body}'
-            my_signature = hmac.new(SIGNING_SECRET.encode(), sig_basestring.encode(), hashlib.sha256).hexdigest()
+            my_signature = hmac.new(
+                os.environ['SLACK_APP_PONG_SIGNING_SECRET'].encode(),
+                sig_basestring.encode(),
+                hashlib.sha256
+            ).hexdigest()
             assert f'{version}={my_signature}' == x_slack_signature
         except:
             return Response('Unauthorized', 401)
