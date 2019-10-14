@@ -49,6 +49,8 @@ jobs:
           command: |
             . venv/bin/activate
             pytest --cov=app --cov-report term-missing -v
+          environment:
+            SLACK_APP_PONG_DATABASE_URL: postgres://some:@localhost:5432/some
 
       - store_artifacts:
           path: test-reports
