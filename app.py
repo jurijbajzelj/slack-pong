@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
+from functools import wraps
 import requests
 import json
 import os
@@ -55,17 +56,26 @@ def oauth():
     return 'redirect somewhere'
 
 
+def authorize(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
+            request_body = request.get_data().decode()
+            x_slack_signature = request.headers['X-Slack-Signature']
+            version = x_slack_signature.split('=')[0]
+            x_slack_request_timestamp = request.headers['X-Slack-Request-Timestamp']
+            sig_basestring = f'{version}:{x_slack_request_timestamp}:{request_body}'
+            my_signature = hmac.new(SIGNING_SECRET.encode(), sig_basestring.encode(), hashlib.sha256).hexdigest()
+            assert f'{version}={my_signature}' == x_slack_signature
+        except:
+            return Response('Unauthorized', 401)
+        return f(*args, **kwargs)
+    return wrapper
+
+
 @app.route('/won', methods = ['POST'])
+@authorize
 def won():
-    request_body = request.get_data().decode()
-    x_slack_signature = request.headers['X-Slack-Signature']
-    version = x_slack_signature.split('=')[0]
-    x_slack_request_timestamp = request.headers['X-Slack-Request-Timestamp']
-
-    sig_basestring = f'{version}:{x_slack_request_timestamp}:{request_body}'
-    my_signature = hmac.new(SIGNING_SECRET.encode(), sig_basestring.encode(), hashlib.sha256).hexdigest()
-    assert f'{version}={my_signature}' == x_slack_signature
-
     winner = request.form['user_id']
     loser = request.form['text'].strip().split('<@')[1].split('|')[0].split('>')[0]
     team_id = request.form['team_id']
