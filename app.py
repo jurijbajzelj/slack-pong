@@ -114,10 +114,7 @@ def won():
 
         response = {
             'response_type': 'in_channel',
-            'text': f"<@{winner}> reported a win over <@{loser}>",
-            'attachments': [{
-                'text': f'```Current standings\n{output}```'
-            }]
+            'text': f'```Current standings\n{output}```'
         }
         return response
 

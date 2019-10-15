@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Index, Integer, String, DateTime
 from sqlalchemy.ext import declarative
 
 
@@ -33,3 +33,19 @@ class Match(Base):
     loser = Column(String, nullable=False)
     team_id = Column(String, nullable=False)
     timestamp = Column(DateTime, nullable=False)
+
+
+class UserContext(Base):
+    """ Map external user context of Slack (combination of string ids) to internal one (integer id).
+    """
+    __tablename__ = 'user_context'
+
+    id = Column(Integer, primary_key=True)
+    slack_user_id = Column(String, nullable=False)
+    slack_user_name = Column(String, nullable=False)
+    slack_team_id = Column(String, nullable=False)
+
+    __table_args__ = (
+        Index('idx_user_context_0', 'slack_user_id', 'slack_team_id', unique=True),
+        Index('idx_user_context_1', 'slack_user_name')
+    )
