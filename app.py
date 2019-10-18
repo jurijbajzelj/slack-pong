@@ -221,7 +221,7 @@ def won():
         channel = get_channel(db, team_id=team.id, slack_channel_id=channel_id, slack_channel_name=channel_name)
         winner = get_app_user(db, team_id=team.id, slack_user_id=winner_slack_id, slack_user_name=winner_slack_name)
         loser = get_app_user(db, team_id=team.id, slack_user_id=loser_slack_id, slack_user_name=loser_slack_name)
-        insert_match(db, channel_id=channel_id, player_1_id=winner.id, player_2_id=loser.id, winner_id=winner.id)
+        insert_match(db, channel_id=channel.id, player_1_id=winner.id, player_2_id=loser.id, winner_id=winner.id)
 
         counter = 0
         lines = []
