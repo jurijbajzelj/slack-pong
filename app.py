@@ -227,9 +227,9 @@ def won():
         lines = []
         for p in get_leaderboard(db, channel_id=channel.id):
             counter += 1
-            line = f'[ {p.elo} ] {counter}. {p.name} (win/loss: {p.won}/{p.lost})'
+            line = f'[ {p.elo} ] {counter}. {p.name} (W/L: {p.won}/{p.lost})'
             lines.append(line)
-        text = '\n'.join(lines)
+        text = '```' + '\n'.join(lines) + '```'
 
         return {
             'response_type': 'in_channel',
