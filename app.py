@@ -157,6 +157,12 @@ class PlayerStats:
         self.win_percentage = int(won / played)
 
 
+def get_display_name(db, app_user_id: int):
+    assert isinstance(app_user_id, int)
+    app_user = db.query(AppUser).get(app_user_id)
+    return app_user.nickname or app_user.slack_user_name
+
+
 def get_leaderboard(db, channel_id: int):
     assert isinstance(channel_id, int)
     # load all player ids for all matches in the channel
@@ -196,12 +202,27 @@ def get_leaderboard(db, channel_id: int):
 
     sorted_by_elo = sorted(elo_dict.items(), key=lambda kv: kv[1], reverse=True)
     return [PlayerStats(
-        name=db.query(AppUser).get(app_user_id).slack_user_name,  # TODO add support for nicknames
+        name=get_display_name(db=db, app_user_id=app_user_id),
         elo=int(elo),
         played=matches_played[app_user_id],
         won=matches_won[app_user_id],
         lost=matches_lost[app_user_id]
     ) for app_user_id, elo in sorted_by_elo]
+
+
+@app.route('/nickname', methods = ['POST'])
+@authorize
+def nickname():
+    # TODO limit length, validation, sql injection issue, also tests
+    # TODO randomize response messages
+    with get_session() as db:
+        team = get_team(db, slack_team_id=request.form['team_id'], slack_team_domain=request.form['team_domain'])
+        app_user = get_app_user(db, team_id=team.id, slack_user_id=request.form['user_id'], slack_user_name=request.form['user_name'])
+        app_user.nickname = request.form['text']
+    return {
+        'response_type': 'in_channel',
+        'text': 'god mode activated'
+    }
 
 
 @app.route('/won', methods = ['POST'])
