@@ -39,7 +39,7 @@ class AppUser(Base):
     __tablename__ = 'app_user'
 
     id = Column(Integer, primary_key=True)
-    team_id = Column(Integer, ForeignKey('team.id', ondelete='CASCASE'), nullable=False)
+    team_id = Column(Integer, ForeignKey('team.id', ondelete='CASCADE'), nullable=False)
     slack_user_id = Column(String, nullable=False)
     slack_user_name = Column(String, nullable=False)
     nickname = Column(String)
