@@ -1,6 +1,5 @@
 import requests
 from models import Match
-from models import Base
 
 
 BASE_URL = 'http://localhost:5000'

@@ -1,10 +1,10 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, Response
 from functools import wraps
 import requests
 import json
 import os
 from database import get_session
-from models import OAuth, MatchOld, Team, Channel, AppUser, Match
+from models import OAuth, Team, Channel, AppUser, Match
 import hmac
 import hashlib
 from datetime import datetime
@@ -17,15 +17,13 @@ CLIENT_SECRET = os.environ['SLACK_APP_PONG_CLIENT_SECRET']
 assert 'SLACK_APP_PONG_SIGNING_SECRET' in os.environ
 assert 'SLACK_APP_PONG_DATABASE_URL' in os.environ
 
+
 @app.errorhandler(500)
 def handle_internal_server_error(e):
     return 'HTTP 500', 500
 
-@app.route("/")
-def home():
-    return "Hello, World!"
 
-@app.route('/oauth', methods = ['GET'])
+@app.route('/oauth', methods=['GET'])
 def oauth():
     code = request.args.get('code')
     if not code:
@@ -41,12 +39,12 @@ def oauth():
 
     with get_session() as db_session:
         oauth = OAuth(
-            scope = response['scope'],
-            enterprise_id = response['enterprise_id'],
-            access_token = response['access_token'],
-            team_id = response['team_id'],
-            team_name = response['team_name'],
-            user_id = response['user_id']
+            scope=response['scope'],
+            enterprise_id=response['enterprise_id'],
+            access_token=response['access_token'],
+            team_id=response['team_id'],
+            team_name=response['team_name'],
+            user_id=response['user_id']
         )
         db_session.add(oauth)
 
@@ -68,7 +66,7 @@ def authorize(f):
                 hashlib.sha256
             ).hexdigest()
             assert f'{version}={my_signature}' == x_slack_signature
-        except:
+        except Exception:
             return Response('Unauthorized', 401)
         return f(*args, **kwargs)
     return wrapper
@@ -121,7 +119,13 @@ def insert_match(db, channel_id: int, player_1_id: int, player_2_id: int, winner
     assert isinstance(player_2_id, int)
     assert isinstance(winner_id, int)
     timestamp = datetime.now().replace(microsecond=0)
-    match = Match(channel_id=channel_id, player_1_id=player_1_id, player_2_id=player_2_id, winner_id=winner_id, timestamp=timestamp)
+    match = Match(
+        channel_id=channel_id,
+        player_1_id=player_1_id,
+        player_2_id=player_2_id,
+        winner_id=winner_id,
+        timestamp=timestamp
+    )
     db.add(match)
     return match
 
@@ -210,14 +214,19 @@ def get_leaderboard(db, channel_id: int):
     ) for app_user_id, elo in sorted_by_elo]
 
 
-@app.route('/nickname', methods = ['POST'])
+@app.route('/nickname', methods=['POST'])
 @authorize
 def nickname():
     # TODO limit length, validation, sql injection issue, also tests
     # TODO randomize response messages
     with get_session() as db:
         team = get_team(db, slack_team_id=request.form['team_id'], slack_team_domain=request.form['team_domain'])
-        app_user = get_app_user(db, team_id=team.id, slack_user_id=request.form['user_id'], slack_user_name=request.form['user_name'])
+        app_user = get_app_user(
+            db=db,
+            team_id=team.id,
+            slack_user_id=request.form['user_id'],
+            slack_user_name=request.form['user_name']
+        )
         app_user.nickname = request.form['text']
     return {
         'response_type': 'in_channel',
@@ -225,7 +234,7 @@ def nickname():
     }
 
 
-@app.route('/won', methods = ['POST'])
+@app.route('/won', methods=['POST'])
 @authorize
 def won():
     winner_slack_id = request.form['user_id']
@@ -256,6 +265,7 @@ def won():
             'response_type': 'in_channel',
             'text': text
         }
+
 
 if __name__ == "__main__":
     app.run()

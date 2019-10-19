@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Index, Integer, String, DateTime
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.ext import declarative
 
 
@@ -15,16 +15,6 @@ class OAuth(Base):
     team_id = Column(String, nullable=False)
     team_name = Column(String, nullable=False)
     user_id = Column(String, nullable=False)
-
-
-class MatchOld(Base):
-    __tablename__ = 'match_old'
-
-    id = Column(Integer, nullable=False, primary_key=True)
-    winner = Column(String, nullable=False)
-    loser = Column(String, nullable=False)
-    team_id = Column(String, nullable=False)
-    timestamp = Column(DateTime, nullable=False)
 
 
 class Team(Base):
