@@ -8,6 +8,7 @@ from models import OAuth, Team, Channel, AppUser, Match
 import hmac
 import hashlib
 from datetime import datetime
+from threading import Thread
 
 
 app = Flask(__name__)
@@ -214,24 +215,46 @@ def get_leaderboard(db, channel_id: int):
     ) for app_user_id, elo in sorted_by_elo]
 
 
+class Compute(Thread):
+    def __init__(self, request):
+        Thread.__init__(self)
+        self.request = request
+
+    def run(self):
+        with get_session() as db:
+            team = get_team(
+                db=db,
+                slack_team_id=self.request.form['team_id'],
+                slack_team_domain=self.request.form['team_domain']
+            )
+            app_user = get_app_user(
+                db=db,
+                team_id=team.id,
+                slack_user_id=self.request.form['user_id'],
+                slack_user_name=self.request.form['user_name']
+            )
+            app_user.nickname = self.request.form['text']
+
+            assert requests.post(
+                self.request.form['response_url'],
+                data=json.dumps({
+                    'response_type': 'in_channel',
+                    'text': f'<@{app_user.slack_user_id}> set his nickname to _{app_user.nickname}_'
+                }),
+                headers={
+                    'Content-Type': 'application/json'
+                }
+            ).status_code == 200
+
+
 @app.route('/nickname', methods=['POST'])
 @authorize
 def nickname():
-    # TODO limit length, validation, sql injection issue, also tests
+    # TODO limit length, validation, also tests
     # TODO randomize response messages
-    with get_session() as db:
-        team = get_team(db, slack_team_id=request.form['team_id'], slack_team_domain=request.form['team_domain'])
-        app_user = get_app_user(
-            db=db,
-            team_id=team.id,
-            slack_user_id=request.form['user_id'],
-            slack_user_name=request.form['user_name']
-        )
-        app_user.nickname = request.form['text']
-    return {
-        'response_type': 'in_channel',
-        'text': 'god mode activated'
-    }
+    # TODO make it clear that this command is available
+    Compute(request.__copy__()).start()
+    return f'Your nickname will be changed to _{request.form["text"]}_', 200
 
 
 @app.route('/won', methods=['POST'])
