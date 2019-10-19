@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from flask import Flask, request, Response
 from functools import wraps
 import requests
@@ -215,10 +216,17 @@ def get_leaderboard(db, channel_id: int):
     ) for app_user_id, elo in sorted_by_elo]
 
 
-class Compute(Thread):
+class AppThread(Thread):
     def __init__(self, request):
         Thread.__init__(self)
         self.request = request
+
+    @abstractmethod
+    def run(self):
+        """ not implemented """
+
+
+class NicknameThread(AppThread):
 
     def run(self):
         with get_session() as db:
@@ -251,9 +259,8 @@ class Compute(Thread):
 @authorize
 def nickname():
     # TODO limit length, validation, also tests
-    # TODO randomize response messages
     # TODO make it clear that this command is available
-    Compute(request.__copy__()).start()
+    NicknameThread(request.__copy__()).start()
     return f'Your nickname will be changed to _{request.form["text"]}_', 200
 
 
