@@ -1,14 +1,13 @@
 from abc import abstractmethod
-from flask import Flask, request, Response
+from flask import Flask, request
 from functools import wraps
 import requests
 import json
 import os
-from database import get_session
-from models import OAuth, Team, Channel, AppUser, Match
+from database import get_session, get_display_name, get_team, get_channel, get_app_user, insert_match
+from models import OAuth, Match
 import hmac
 import hashlib
-from datetime import datetime
 from threading import Thread
 
 
@@ -20,9 +19,21 @@ assert 'SLACK_APP_PONG_SIGNING_SECRET' in os.environ
 assert 'SLACK_APP_PONG_DATABASE_URL' in os.environ
 
 
+class AuthorizeException(Exception):
+    pass
+
+
+class ValidateException(Exception):
+    pass
+
+
 @app.errorhandler(500)
 def handle_internal_server_error(e):
-    return 'HTTP 500', 500
+    if isinstance(e.original_exception, ValidateException):
+        return 'Bad Request', 400
+    elif isinstance(e.original_exception, AuthorizeException):
+        return 'Unauthorized', 401
+    return 'Internal Server Error', 500
 
 
 @app.route('/oauth', methods=['GET'])
@@ -69,67 +80,9 @@ def authorize(f):
             ).hexdigest()
             assert f'{version}={my_signature}' == x_slack_signature
         except Exception:
-            return Response('Unauthorized', 401)
+            raise AuthorizeException(request.headers, request.form)
         return f(*args, **kwargs)
     return wrapper
-
-
-def get_team(db, slack_team_id: str, slack_team_domain: str):
-    assert isinstance(slack_team_id, str)
-    assert isinstance(slack_team_domain, str)
-    team = db.query(Team).filter(Team.slack_team_id == slack_team_id).first()
-    if team:
-        team.slack_team_domain = slack_team_domain
-    else:
-        team = Team(slack_team_id=slack_team_id, slack_team_domain=slack_team_domain)
-        db.add(team)
-        db.flush()
-    return team
-
-
-def get_channel(db, team_id: int, slack_channel_id: str, slack_channel_name: str):
-    assert isinstance(team_id, int)
-    assert isinstance(slack_channel_id, str)
-    assert isinstance(slack_channel_name, str)
-    channel = db.query(Channel).filter(Channel.team_id == team_id, Channel.slack_channel_id == slack_channel_id).first()
-    if channel:
-        channel.slack_channel_name = slack_channel_name
-    else:
-        channel = Channel(team_id=team_id, slack_channel_id=slack_channel_id, slack_channel_name=slack_channel_name)
-        db.add(channel)
-        db.flush()
-    return channel
-
-
-def get_app_user(db, team_id: int, slack_user_id: str, slack_user_name: str):
-    assert isinstance(team_id, int)
-    assert isinstance(slack_user_id, str)
-    assert isinstance(slack_user_name, str)
-    app_user = db.query(AppUser).filter(AppUser.team_id == team_id, AppUser.slack_user_id == slack_user_id).first()
-    if app_user:
-        app_user.slack_user_name = slack_user_name
-    else:
-        app_user = AppUser(team_id=team_id, slack_user_id=slack_user_id, slack_user_name=slack_user_name)
-        db.add(app_user)
-        db.flush()
-    return app_user
-
-
-def insert_match(db, channel_id: int, player_1_id: int, player_2_id: int, winner_id: id):
-    assert isinstance(channel_id, int)
-    assert isinstance(player_1_id, int)
-    assert isinstance(player_2_id, int)
-    assert isinstance(winner_id, int)
-    timestamp = datetime.now().replace(microsecond=0)
-    match = Match(
-        channel_id=channel_id,
-        player_1_id=player_1_id,
-        player_2_id=player_2_id,
-        winner_id=winner_id,
-        timestamp=timestamp
-    )
-    db.add(match)
-    return match
 
 
 def calculate_expected(player_1_elo, player_2_elo):
@@ -161,12 +114,6 @@ class PlayerStats:
         self.lost = lost
         self.won = won
         self.win_percentage = int(won / played)
-
-
-def get_display_name(db, app_user_id: int):
-    assert isinstance(app_user_id, int)
-    app_user = db.query(AppUser).get(app_user_id)
-    return app_user.nickname or app_user.slack_user_name
 
 
 def get_leaderboard(db, channel_id: int):
@@ -264,13 +211,42 @@ def nickname():
     return f'Your nickname will be changed to _{request.form["text"]}_', 200
 
 
+def validate(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
+            for field in ['user_id', 'user_name', 'text', 'team_id', 'team_domain', 'channel_id', 'channel_name']:
+                assert field in request.form and isinstance(request.form[field], str)
+        except Exception:
+            raise ValidateException(request.form)
+        return f(*args, **kwargs)
+    return wrapper
+
+
 @app.route('/won', methods=['POST'])
 @authorize
+@validate
 def won():
+    # validate the command text
     winner_slack_id = request.form['user_id']
+    try:
+        loser_slack_id = request.form['text'].strip().split('<@')[1].split('|')[0].split('>')[0]
+        loser_slack_name = request.form['text'].strip().split('|')[1][:-1]
+    except Exception:
+        return {
+            'text': ':x: You should mention someone when reporting a win, like this:',
+            'attachments': [{
+                'text': f'`/won <@{winner_slack_id}>` _(but don\'t mention yourself, this is just an example)_'
+            }]
+        }
+
+    # check that mentioned player is not the one reporting the win
+    if winner_slack_id == loser_slack_id:
+        return {
+            'text': ':x: You cannot mention yourself. Mention the player you have won.'
+        }
+
     winner_slack_name = request.form['user_name']
-    loser_slack_id = request.form['text'].strip().split('<@')[1].split('|')[0].split('>')[0]
-    loser_slack_name = request.form['text'].strip().split('|')[1][:-1]
     team_id = request.form['team_id']
     team_domain = request.form['team_domain']
     channel_id = request.form['channel_id']

@@ -42,5 +42,10 @@ def test_nickname(client):
     assert client.post('/nickname').status_code == 400  # bad request
 
 
-def test_nickname_2(client):
-    assert client.post('/nickname').status_code == 401  # unauthorized
+def test_won(client):
+    undecorate(client.application, 'won')
+    assert client.post(
+        '/won',
+        data={
+        }
+    ).status_code == 400
