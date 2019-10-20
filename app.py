@@ -196,7 +196,7 @@ class NicknameThread(AppThread):
                     self.request.form['response_url'],
                     data=json.dumps({
                         'response_type': 'in_channel',
-                        'text': f'<@{app_user.slack_user_id}> set his nickname to _{app_user.nickname}_'
+                        'text': f'<@{app_user.slack_user_id}> changed his nickname to _{app_user.nickname}_'
                     }),
                     headers={
                         'Content-Type': 'application/json'
@@ -210,7 +210,7 @@ def nickname():
     # TODO limit length, validation, also tests
     # TODO make it clear that this command is available
     NicknameThread(request.__copy__()).start()
-    return f'Your nickname will be changed to _{request.form["text"]}_', 200
+    return f':heavy_check_mark: Your nickname will be changed to _{request.form["text"]}_', 200
 
 
 def validate(f):
