@@ -13,10 +13,11 @@ from threading import Thread
 
 app = Flask(__name__)
 
+app.config['DATABASE_URL'] = os.environ['SLACK_APP_PONG_DATABASE_URL']
+app.config['SIGNING_SECRET'] = os.environ['SLACK_APP_PONG_SIGNING_SECRET']
+
 CLIENT_ID = os.environ['SLACK_APP_PONG_CLIENT_ID']
 CLIENT_SECRET = os.environ['SLACK_APP_PONG_CLIENT_SECRET']
-assert 'SLACK_APP_PONG_SIGNING_SECRET' in os.environ
-assert 'SLACK_APP_PONG_DATABASE_URL' in os.environ
 
 
 class AuthorizeException(Exception):
@@ -74,7 +75,7 @@ def authorize(f):
             x_slack_request_timestamp = request.headers['X-Slack-Request-Timestamp']
             sig_basestring = f'{version}:{x_slack_request_timestamp}:{request_body}'
             my_signature = hmac.new(
-                os.environ['SLACK_APP_PONG_SIGNING_SECRET'].encode(),
+                app.config['SIGNING_SECRET'].encode(),
                 sig_basestring.encode(),
                 hashlib.sha256
             ).hexdigest()
@@ -176,30 +177,31 @@ class AppThread(Thread):
 class NicknameThread(AppThread):
 
     def run(self):
-        with get_session() as db:
-            team = get_team(
-                db=db,
-                slack_team_id=self.request.form['team_id'],
-                slack_team_domain=self.request.form['team_domain']
-            )
-            app_user = get_app_user(
-                db=db,
-                team_id=team.id,
-                slack_user_id=self.request.form['user_id'],
-                slack_user_name=self.request.form['user_name']
-            )
-            app_user.nickname = self.request.form['text']
+        with app.app_context():
+            with get_session() as db:
+                team = get_team(
+                    db=db,
+                    slack_team_id=self.request.form['team_id'],
+                    slack_team_domain=self.request.form['team_domain']
+                )
+                app_user = get_app_user(
+                    db=db,
+                    team_id=team.id,
+                    slack_user_id=self.request.form['user_id'],
+                    slack_user_name=self.request.form['user_name']
+                )
+                app_user.nickname = self.request.form['text']
 
-            assert requests.post(
-                self.request.form['response_url'],
-                data=json.dumps({
-                    'response_type': 'in_channel',
-                    'text': f'<@{app_user.slack_user_id}> set his nickname to _{app_user.nickname}_'
-                }),
-                headers={
-                    'Content-Type': 'application/json'
-                }
-            ).status_code == 200
+                assert requests.post(
+                    self.request.form['response_url'],
+                    data=json.dumps({
+                        'response_type': 'in_channel',
+                        'text': f'<@{app_user.slack_user_id}> changed his nickname to _{app_user.nickname}_'
+                    }),
+                    headers={
+                        'Content-Type': 'application/json'
+                    }
+                ).status_code == 200
 
 
 @app.route('/nickname', methods=['POST'])
@@ -208,7 +210,7 @@ def nickname():
     # TODO limit length, validation, also tests
     # TODO make it clear that this command is available
     NicknameThread(request.__copy__()).start()
-    return f'Your nickname will be changed to _{request.form["text"]}_', 200
+    return f':heavy_check_mark: Your nickname will be changed to _{request.form["text"]}_', 200
 
 
 def validate(f):

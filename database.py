@@ -1,16 +1,16 @@
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from contextlib import contextmanager
 from models import AppUser, Team, Channel, Match
 from datetime import datetime
+from flask import current_app
 
 
 @contextmanager
 def get_session():
     """ Creates a context with an open SQLAlchemy session.
     """
-    engine = create_engine(os.environ['SLACK_APP_PONG_DATABASE_URL'])
+    engine = create_engine(current_app.config['DATABASE_URL'])
     db_session = scoped_session(sessionmaker(autocommit=False, autoflush=True, bind=engine))
     yield db_session
     db_session.commit()
