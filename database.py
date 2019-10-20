@@ -11,7 +11,7 @@ def get_session():
     """ Creates a context with an open SQLAlchemy session.
     """
     engine = create_engine(current_app.config['DATABASE_URL'])
-    db_session = scoped_session(sessionmaker(autocommit=False, autoflush=True, bind=engine))
+    db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
     yield db_session
     db_session.commit()
     db_session.close()
@@ -78,4 +78,5 @@ def insert_match(db, channel_id: int, player_1_id: int, player_2_id: int, winner
         timestamp=timestamp
     )
     db.add(match)
+    db.flush()
     return match

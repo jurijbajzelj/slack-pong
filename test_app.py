@@ -1,5 +1,6 @@
 from models import Match
 from undecorated import undecorated
+import json
 
 
 def test_authorization(client):
@@ -28,10 +29,45 @@ def test_nickname(client):
     assert client.post('/nickname').status_code == 400  # bad request
 
 
-def test_won(client):
+def test_won(prepare_db, client):
+    # TODO do this test also when migration to thread is done
     undecorate(client.application, 'won')
-    assert client.post(
+
+    resp = client.post(
         '/won',
         data={
+            'user_id': 'gregor_id',
+            'user_name': 'gregor',
+            'text': '<@domen_id|domen>',
+            'team_id': 'team_1',
+            'team_domain': 'some-team',
+            'channel_id': 'channel_1',
+            'channel_name': 'some-channel'
         }
-    ).status_code == 400
+    )
+    assert resp.status_code == 200
+    resp = json.loads(resp.get_data())['text'].strip('```').replace('\n', '')
+    assert resp == (
+        "[ 1517 ] 1. gregor (W/L: 1/0)"
+        "[ 1485 ] 2. domen (W/L: 0/1)"
+    )
+
+    resp = client.post(
+        '/won',
+        data={
+            'user_id': 'domen_id',
+            'user_name': 'domen',
+            'text': '<@yuri_id|yuri>',
+            'team_id': 'team_1',
+            'team_domain': 'some-team',
+            'channel_id': 'channel_1',
+            'channel_name': 'some-channel'
+        }
+    )
+    assert resp.status_code == 200
+    resp = json.loads(resp.get_data())['text'].strip('```').replace('\n', '')
+    assert resp == (
+        "[ 1517 ] 1. gregor (W/L: 1/0)"
+        "[ 1503 ] 2. domen (W/L: 1/1)"
+        "[ 1485 ] 3. yuri (W/L: 0/1)"
+    )

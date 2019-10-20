@@ -18,7 +18,7 @@ def client(monkeypatch):
 def db_session(client):
     with client.application.app_context():
         with get_session() as session:
-            return session
+            yield session
 
 
 @fixture

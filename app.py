@@ -9,6 +9,7 @@ from models import OAuth, Match
 import hmac
 import hashlib
 from threading import Thread
+from elo import get_leaderboard
 
 
 app = Flask(__name__)
@@ -86,82 +87,16 @@ def authorize(f):
     return wrapper
 
 
-def calculate_expected(player_1_elo, player_2_elo):
-    """
-    Calculate expected score of A in a match against B
-    :param A: Elo rating for player A
-    :param B: Elo rating for player B
-    """
-    return 1 / (1 + 10 ** ((player_2_elo - player_1_elo) / 400))
-
-
-def calculate_elo(old, exp, score, k=32):
-    """
-    Calculate the new Elo rating for a player
-    :param old: The previous Elo rating
-    :param exp: The expected score for this match
-    :param score: The actual score for this match
-    :param k: The k-factor for Elo (default: 32)
-    """
-    return old + k * (score - exp)
-
-
-class PlayerStats:
-
-    def __init__(self, name, elo, played, lost, won):
-        self.name = name
-        self.elo = elo
-        self.played = played
-        self.lost = lost
-        self.won = won
-        self.win_percentage = int(won / played)
-
-
-def get_leaderboard(db, channel_id: int):
-    assert isinstance(channel_id, int)
-    # load all player ids for all matches in the channel
-    group_1 = db.query(Match.player_1_id).filter(Match.channel_id == channel_id).group_by(Match.player_1_id)
-    group_1_set = set(player_id for player_id, in group_1)
-    group_2 = db.query(Match.player_2_id).filter(Match.channel_id == channel_id).group_by(Match.player_2_id)
-    group_2_set = set(player_id for player_id, in group_2)
-    player_ids = group_1_set.union(group_2_set)
-
-    elo_dict = {player_id: 1500 for player_id in player_ids}
-    matches_played = {player_id: 0 for player_id in player_ids}
-    matches_won = {player_id: 0 for player_id in player_ids}
-    matches_lost = {player_id: 0 for player_id in player_ids}
-
-    for match in db.query(Match).filter(Match.channel_id == channel_id):
-        elo_dict[match.player_1_id] = calculate_elo(
-            old=elo_dict[match.player_1_id],
-            exp=calculate_expected(player_1_elo=elo_dict[match.player_1_id], player_2_elo=elo_dict[match.player_2_id]),
-            score=int(match.player_1_id == match.winner_id)
-        )
-        elo_dict[match.player_2_id] = calculate_elo(
-            old=elo_dict[match.player_2_id],
-            exp=calculate_expected(player_1_elo=elo_dict[match.player_2_id], player_2_elo=elo_dict[match.player_1_id]),
-            score=int(match.player_2_id == match.winner_id)
-        )
-        matches_played[match.player_1_id] += 1
-        matches_played[match.player_2_id] += 1
-        if match.player_1_id == match.winner_id:
-            matches_won[match.player_1_id] += 1
-            matches_lost[match.player_2_id] += 1
-        if match.player_2_id == match.winner_id:
-            matches_won[match.player_2_id] += 1
-            matches_lost[match.player_1_id] += 1
-
-    for player_id, elo in elo_dict.items():
-        elo_dict[player_id] = elo + matches_played[player_id]
-
-    sorted_by_elo = sorted(elo_dict.items(), key=lambda kv: kv[1], reverse=True)
-    return [PlayerStats(
-        name=get_display_name(db=db, app_user_id=app_user_id),
-        elo=int(elo),
-        played=matches_played[app_user_id],
-        won=matches_won[app_user_id],
-        lost=matches_lost[app_user_id]
-    ) for app_user_id, elo in sorted_by_elo]
+def validate(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
+            for field in ['user_id', 'user_name', 'text', 'team_id', 'team_domain', 'channel_id', 'channel_name']:
+                assert field in request.form and isinstance(request.form[field], str)
+        except Exception:
+            raise ValidateException(request.form)
+        return f(*args, **kwargs)
+    return wrapper
 
 
 class AppThread(Thread):
@@ -213,18 +148,6 @@ def nickname():
     return f':heavy_check_mark: Your nickname will be changed to _{request.form["text"]}_', 200
 
 
-def validate(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        try:
-            for field in ['user_id', 'user_name', 'text', 'team_id', 'team_domain', 'channel_id', 'channel_name']:
-                assert field in request.form and isinstance(request.form[field], str)
-        except Exception:
-            raise ValidateException(request.form)
-        return f(*args, **kwargs)
-    return wrapper
-
-
 @app.route('/won', methods=['POST'])
 @authorize
 @validate
@@ -263,9 +186,11 @@ def won():
 
         counter = 0
         lines = []
-        for p in get_leaderboard(db, channel_id=channel.id):
+
+        for p in get_leaderboard(match_list=db.query(Match).filter(Match.channel_id == channel.id).all()):
+            player_name = get_display_name(db=db, app_user_id=p.app_user_id)
             counter += 1
-            line = f'[ {p.elo} ] {counter}. {p.name} (W/L: {p.won}/{p.lost})'
+            line = f'[ {p.elo} ] {counter}. {player_name} (W/L: {p.won}/{p.lost})'
             lines.append(line)
         text = '```' + '\n'.join(lines) + '```'
 
