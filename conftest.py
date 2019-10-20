@@ -1,9 +1,6 @@
 from pytest import fixture
-import threading
-import wsgiref.simple_server
 from database import get_session
 from models import Base
-from app import app as my_app
 from importlib import reload
 import app
 

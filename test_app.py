@@ -1,8 +1,4 @@
-import app
-import requests
-from importlib import reload
 from models import Match
-from pytest import fixture
 from undecorated import undecorated
 
 
