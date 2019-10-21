@@ -38,7 +38,7 @@ def test_won(prepare_db, client):
         data={
             'user_id': 'gregor_id',
             'user_name': 'gregor',
-            'text': '<@domen_id|domen>',
+            'text': '<@some_player_id|some_player_with_long_name>',
             'team_id': 'team_1',
             'team_domain': 'some-team',
             'channel_id': 'channel_1',
@@ -48,15 +48,16 @@ def test_won(prepare_db, client):
     assert resp.status_code == 200
     resp = json.loads(resp.get_data())['text'].strip('```').replace('\n', '')
     assert resp == (
-        "[ 1517 ] 1. gregor (W/L: 1/0)"
-        "[ 1485 ] 2. domen (W/L: 0/1)"
+        '[  ELO ] #. Name                       Won Lost'
+        '[ 1517 ] 1. gregor                       1    0'
+        '[ 1485 ] 2. some_player_with_long_name   0    1'
     )
 
     resp = client.post(
         '/won',
         data={
-            'user_id': 'domen_id',
-            'user_name': 'domen',
+            'user_id': 'some_player_id',
+            'user_name': 'some_player_with_long_name',
             'text': '<@yuri_id|yuri>',
             'team_id': 'team_1',
             'team_domain': 'some-team',
@@ -67,7 +68,8 @@ def test_won(prepare_db, client):
     assert resp.status_code == 200
     resp = json.loads(resp.get_data())['text'].strip('```').replace('\n', '')
     assert resp == (
-        "[ 1517 ] 1. gregor (W/L: 1/0)"
-        "[ 1503 ] 2. domen (W/L: 1/1)"
-        "[ 1485 ] 3. yuri (W/L: 0/1)"
+        '[  ELO ] #. Name                       Won Lost'
+        '[ 1517 ] 1. gregor                       1    0'
+        '[ 1503 ] 2. some_player_with_long_name   1    1'
+        '[ 1485 ] 3. yuri                         0    1'
     )

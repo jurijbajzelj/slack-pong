@@ -9,7 +9,8 @@ from models import OAuth, Match
 import hmac
 import hashlib
 from threading import Thread
-from elo import get_leaderboard
+from elo import get_leaderboard, PlayerStats
+from typing import List
 
 
 app = Flask(__name__)
@@ -184,19 +185,43 @@ def won():
         loser = get_app_user(db, team_id=team.id, slack_user_id=loser_slack_id, slack_user_name=loser_slack_name)
         insert_match(db, channel_id=channel.id, player_1_id=winner.id, player_2_id=loser.id, winner_id=winner.id)
 
-        counter = 0
-        lines = []
+        def get_leaderboard_lines(db, leaderboard: List[PlayerStats]):
+            updated_leaderboard = [x.set_name(get_display_name(db=db, app_user_id=x.app_user_id)) for x in leaderboard]
+            from types import SimpleNamespace
+            longest = SimpleNamespace(**{
+                'elo': len('ELO'),
+                'counter': len(str(len(leaderboard))),
+                'name': len('Name'),
+                'won': len('Won'),
+                'lost': len('Lost')
+            })
+            for x in updated_leaderboard:
+                longest.elo = max(longest.elo, len(str(x.elo)))
+                longest.name = max(longest.name, len(str(x.name)))
+                longest.won = max(longest.won, len(str(x.won)))
+                longest.lost = max(longest.lost, len(str(x.lost)))
 
-        for p in get_leaderboard(match_list=db.query(Match).filter(Match.channel_id == channel.id).all()):
-            player_name = get_display_name(db=db, app_user_id=p.app_user_id)
-            counter += 1
-            line = f'[ {p.elo} ] {counter}. {player_name} (W/L: {p.won}/{p.lost})'
-            lines.append(line)
-        text = '```' + '\n'.join(lines) + '```'
+            lines = []
+            elo = 'ELO'[:longest.elo].rjust(longest.elo)
+            counter = '#'[:longest.counter].rjust(longest.counter)
+            name = 'Name'[:longest.name].ljust(longest.name)
+            won = 'Won'[:longest.won].rjust(longest.won)
+            lost = 'Lost'[:longest.lost].rjust(longest.lost)
+            lines.append(f'[ {elo} ] {counter}. {name} {won} {lost}')
+            for i, x in enumerate(updated_leaderboard, start=1):
+                elo = str(x.elo)[:longest.elo].rjust(longest.elo)
+                counter = str(i)[:longest.counter].rjust(longest.counter)
+                name = x.name[:longest.name].ljust(longest.name)
+                won = str(x.won)[:longest.won].rjust(longest.won)
+                lost = str(x.lost)[:longest.lost].rjust(longest.lost)
+                lines.append(f'[ {elo} ] {counter}. {name} {won} {lost}')
+            return lines
 
+        leaderboard = get_leaderboard(match_list=db.query(Match).filter(Match.channel_id == channel.id).all())
+        leaderboard_lines = get_leaderboard_lines(db=db, leaderboard=leaderboard)
         return {
             'response_type': 'in_channel',
-            'text': text
+            'text': '```' + '\n'.join(leaderboard_lines) + '```'
         }
 
 

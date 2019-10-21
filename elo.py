@@ -32,6 +32,11 @@ class PlayerStats:
         self.won = won
         self.win_percentage = int(won / played)
 
+    def set_name(self, name: str):
+        assert isinstance(name, str)
+        self.name = name
+        return self
+
 
 def get_leaderboard(match_list: List[Match]):
     assert isinstance(match_list, list)
