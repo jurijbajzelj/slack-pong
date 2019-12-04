@@ -8,3 +8,6 @@ https://ngrok.com/
 
 #### if you need to edit production database
 `docker run --net=host -e "PGADMIN_DEFAULT_EMAIL=test@gmail.com" -e "PGADMIN_DEFAULT_PASSWORD=test" -v /tmp/servers.json:/pgadmin4/servers.json -d dpage/pgadmin4`
+
+#### management of slack app integration
+https://api.slack.com/apps
