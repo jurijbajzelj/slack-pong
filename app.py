@@ -231,11 +231,13 @@ def won():
 @validate
 def reset():
     team_id = request.form['team_id']
+    team_domain = request.form['team_domain']
     channel_id = request.form['channel_id']
     channel_name = request.form['channel_name']
 
     with get_session() as db:
-        channel = get_channel(db=db, team_id=team_id, slack_channel_id=channel_id, slack_channel_name=channel_name)
+        team = get_team(db=db, slack_team_id=team_id, slack_team_domain=team_domain)
+        channel = get_channel(db=db, team_id=team.id, slack_channel_id=channel_id, slack_channel_name=channel_name)
         channel.rankings_reset_at = datetime.utcnow().replace(microsecond=0)
 
     return {
