@@ -1,5 +1,5 @@
 from typing import List
-from models import Match
+from models import Match, Channel
 
 
 def calculate_expected(player_1_elo, player_2_elo):
@@ -38,8 +38,11 @@ class PlayerStats:
         return self
 
 
-def get_leaderboard(match_list: List[Match]):
-    assert isinstance(match_list, list)
+def get_leaderboard(db, channel_id: int):
+    match_list = db.query(Match).join(Channel).filter(
+        Channel.id == channel_id,
+        Match.timestamp >= Channel.rankings_reset_at
+    ).all()
 
     player_ids = set(match.player_1_id for match in match_list).union(match.player_2_id for match in match_list)
 
