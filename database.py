@@ -44,7 +44,12 @@ def get_channel(db, team_id: int, slack_channel_id: str, slack_channel_name: str
     if channel:
         channel.slack_channel_name = slack_channel_name
     else:
-        channel = Channel(team_id=team_id, slack_channel_id=slack_channel_id, slack_channel_name=slack_channel_name)
+        channel = Channel(
+            team_id=team_id,
+            slack_channel_id=slack_channel_id,
+            slack_channel_name=slack_channel_name,
+            rankings_reset_at=datetime.utcnow().replace(microsecond=0)
+        )
         db.add(channel)
         db.flush()
     return channel

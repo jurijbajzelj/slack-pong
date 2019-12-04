@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, Index
 from sqlalchemy.ext import declarative
 
 
@@ -42,6 +42,7 @@ class Channel(Base):
     team_id = Column(Integer, ForeignKey('team.id', ondelete='CASCADE'), nullable=False)
     slack_channel_id = Column(String, nullable=False)
     slack_channel_name = Column(String, nullable=False)
+    rankings_reset_at = Column(DateTime, nullable=False)
 
 
 class Match(Base):
@@ -53,3 +54,7 @@ class Match(Base):
     player_2_id = Column(Integer, ForeignKey('app_user.id', ondelete='CASCADE'), nullable=False)
     winner_id = Column(Integer, ForeignKey('app_user.id', ondelete='CASCADE'), nullable=False)
     timestamp = Column(DateTime, nullable=False)
+
+    __table_args__ = (
+        Index('idx_match_0', 'id', 'timestamp'),  # used withing get_leaderboard function
+    )

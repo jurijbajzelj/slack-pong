@@ -10,7 +10,9 @@ import hmac
 import hashlib
 from threading import Thread
 from elo import get_leaderboard, PlayerStats
+from types import SimpleNamespace
 from typing import List
+from datetime import datetime
 
 
 app = Flask(__name__)
@@ -187,7 +189,6 @@ def won():
 
         def get_leaderboard_lines(db, leaderboard: List[PlayerStats]):
             updated_leaderboard = [x.set_name(get_display_name(db=db, app_user_id=x.app_user_id)) for x in leaderboard]
-            from types import SimpleNamespace
             longest = SimpleNamespace(**{
                 'elo': len('ELO'),
                 'counter': len(str(len(leaderboard))),
@@ -217,12 +218,30 @@ def won():
                 lines.append(f'[ {elo} ] {counter}. {name} {won} {lost}')
             return lines
 
-        leaderboard = get_leaderboard(match_list=db.query(Match).filter(Match.channel_id == channel.id).all())
+        leaderboard = get_leaderboard(db=db, channel_id=channel.id)
         leaderboard_lines = get_leaderboard_lines(db=db, leaderboard=leaderboard)
         return {
             'response_type': 'in_channel',
             'text': '```' + '\n'.join(leaderboard_lines) + '```'
         }
+
+
+@app.route('/reset', methods=['POST'])
+@authorize
+@validate
+def reset():
+    team_id = request.form['team_id']
+    channel_id = request.form['channel_id']
+    channel_name = request.form['channel_name']
+
+    with get_session() as db:
+        channel = get_channel(db=db, team_id=team.id, slack_channel_id=channel_id, slack_channel_name=channel_name)
+        channel.rankings_reset_at = datetime.utcnow().replace(microsecond=0)
+
+    return {
+        'response_type': 'in_channel',
+        'text': 'Rankings reset for this channel.'
+    }
 
 
 if __name__ == "__main__":
