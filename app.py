@@ -14,6 +14,15 @@ from types import SimpleNamespace
 from typing import List
 from datetime import datetime
 
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+SENTRY_DSN = os.environ['SLACK_APP_PONG_SENTRY_DSN']
+sentry_sdk.init(
+    dsn=SENTRY_DSN,
+    integrations=[FlaskIntegration(), SqlalchemyIntegration()]
+)
 
 app = Flask(__name__)
 
@@ -32,11 +41,23 @@ class ValidateException(Exception):
     pass
 
 
+class TimeoutException(Exception):
+    pass
+
+
 @app.errorhandler(500)
 def handle_internal_server_error(e):
-    if isinstance(e.original_exception, ValidateException):
+    if isinstance(e.original_exception, TimeoutException):
+        sentry_sdk.capture_exception(e)
+        return {
+            'response_type': 'in_channel',
+            'text': '`Looks like the server is taking to long to respond, please try again.`'
+        }
+    elif isinstance(e.original_exception, ValidateException):
+        sentry_sdk.capture_exception(e)
         return 'Bad Request', 400
     elif isinstance(e.original_exception, AuthorizeException):
+        sentry_sdk.capture_exception(e)
         return 'Unauthorized', 401
     return 'Internal Server Error', 500
 
