@@ -18,11 +18,11 @@ import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
-SENTRY_DSN = os.environ['SLACK_APP_PONG_SENTRY_DSN']
+SENTRY_DSN = os.getenv('SLACK_APP_PONG_SENTRY_DSN')  # should not be configured when test are running
 sentry_sdk.init(
     dsn=SENTRY_DSN,
     integrations=[FlaskIntegration(), SqlalchemyIntegration()]
-)
+) if SENTRY_DSN else None
 
 app = Flask(__name__)
 
