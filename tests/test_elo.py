@@ -16,8 +16,8 @@ def test_get_leaderboard():
         db.add(AppUser(team_id=1, slack_user_id='p_1', slack_user_name='u_1')); db.flush()
         db.add(AppUser(team_id=1, slack_user_id='p_2', slack_user_name='u_2')); db.flush()
         db.add(AppUser(team_id=1, slack_user_id='p_3', slack_user_name='u_3')); db.flush()
-        db.add(Match(channel_id=1, player_1_id=1, player_2_id=2, winner_id=1, timestamp=now)); db.flush()
-        db.add(Match(channel_id=1, player_1_id=1, player_2_id=3, winner_id=1, timestamp=now)); db.flush()
+        db.add(Match(channel_id=1, winner_id=1, loser_id=2, timestamp=now)); db.flush()
+        db.add(Match(channel_id=1, winner_id=1, loser_id=3, timestamp=now)); db.flush()
         assert [el.__dict__ for el in get_leaderboard(db=db, channel_id=1)] == [
             {'app_user_id': 1, 'elo': 1533, 'played': 2, 'lost': 0, 'won': 2, 'win_percentage': 1},
             {'app_user_id': 3, 'elo': 1486, 'played': 1, 'lost': 1, 'won': 0, 'win_percentage': 0},

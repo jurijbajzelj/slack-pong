@@ -69,19 +69,17 @@ def get_app_user(db, team_id: int, slack_user_id: str, slack_user_name: str):
     return app_user
 
 
-def insert_match(db, channel_id: int, player_1_id: int, player_2_id: int, winner_id: id):
+def insert_match(db, channel_id: int, winner_id: int, loser_id: int):
     assert isinstance(channel_id, int)
-    assert isinstance(player_1_id, int)
-    assert isinstance(player_2_id, int)
     assert isinstance(winner_id, int)
+    assert isinstance(loser_id, int)
     timestamp = datetime.now().replace(microsecond=0)
     match = Match(
         channel_id=channel_id,
-        player_1_id=player_1_id,
-        player_2_id=player_2_id,
         winner_id=winner_id,
+        loser_id=loser_id,
         timestamp=timestamp
     )
     db.add(match)
-    db.flush()
+    db.flush()  # TODO is flush needed
     return match

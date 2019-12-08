@@ -50,9 +50,8 @@ class Match(Base):
 
     id = Column(Integer, primary_key=True)
     channel_id = Column(Integer, ForeignKey('channel.id', ondelete='CASCADE'), nullable=False)
-    player_1_id = Column(Integer, ForeignKey('app_user.id', ondelete='CASCADE'), nullable=False)
-    player_2_id = Column(Integer, ForeignKey('app_user.id', ondelete='CASCADE'), nullable=False)
     winner_id = Column(Integer, ForeignKey('app_user.id', ondelete='CASCADE'), nullable=False)
+    loser_id = Column(Integer, ForeignKey('app_user.id', ondelete='CASCADE'), nullable=False)
     timestamp = Column(DateTime, nullable=False)
 
     __table_args__ = (

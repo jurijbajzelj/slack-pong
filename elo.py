@@ -44,7 +44,7 @@ def get_leaderboard(db, channel_id: int):
         Match.timestamp >= Channel.rankings_reset_at
     ).all()
 
-    player_ids = set(match.player_1_id for match in match_list).union(match.player_2_id for match in match_list)
+    player_ids = set(match.winner_id for match in match_list).union(match.loser_id for match in match_list)
 
     elo_dict = {player_id: 1500 for player_id in player_ids}
     matches_played = {player_id: 0 for player_id in player_ids}
@@ -52,25 +52,22 @@ def get_leaderboard(db, channel_id: int):
     matches_lost = {player_id: 0 for player_id in player_ids}
 
     for match in match_list:
-        elo_dict[match.player_1_id] = calculate_elo(
-            old=elo_dict[match.player_1_id],
-            exp=calculate_expected(player_1_elo=elo_dict[match.player_1_id], player_2_elo=elo_dict[match.player_2_id]),
-            score=int(match.player_1_id == match.winner_id)
+        elo_dict[match.winner_id] = calculate_elo(
+            old=elo_dict[match.winner_id],
+            exp=calculate_expected(player_1_elo=elo_dict[match.winner_id], player_2_elo=elo_dict[match.loser_id]),
+            score=1
         )
-        elo_dict[match.player_2_id] = calculate_elo(
-            old=elo_dict[match.player_2_id],
-            exp=calculate_expected(player_1_elo=elo_dict[match.player_2_id], player_2_elo=elo_dict[match.player_1_id]),
-            score=int(match.player_2_id == match.winner_id)
+        elo_dict[match.loser_id] = calculate_elo(
+            old=elo_dict[match.loser_id],
+            exp=calculate_expected(player_1_elo=elo_dict[match.loser_id], player_2_elo=elo_dict[match.winner_id]),
+            score=0
         )
-        matches_played[match.player_1_id] += 1
-        matches_played[match.player_2_id] += 1
-        if match.player_1_id == match.winner_id:
-            matches_won[match.player_1_id] += 1
-            matches_lost[match.player_2_id] += 1
-        if match.player_2_id == match.winner_id:
-            matches_won[match.player_2_id] += 1
-            matches_lost[match.player_1_id] += 1
+        matches_played[match.winner_id] += 1
+        matches_played[match.loser_id] += 1
+        matches_won[match.winner_id] += 1
+        matches_lost[match.loser_id] += 1
 
+    # for every match played, player is granted +1 bonus points
     for player_id, elo in elo_dict.items():
         elo_dict[player_id] = elo + matches_played[player_id]
 
