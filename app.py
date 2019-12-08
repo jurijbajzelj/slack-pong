@@ -1,14 +1,12 @@
-from abc import abstractmethod
 from flask import Flask, request
 from functools import wraps
 import requests
 import json
 import os
 from database import get_session, get_display_name, get_team, get_channel, get_app_user, insert_match
-from models import OAuth, Match
+from models import OAuth
 import hmac
 import hashlib
-from threading import Thread
 from elo import get_leaderboard, PlayerStats
 from types import SimpleNamespace
 from typing import List
@@ -123,53 +121,20 @@ def validate(f):
     return wrapper
 
 
-class AppThread(Thread):
-    def __init__(self, request):
-        Thread.__init__(self)
-        self.request = request
-
-    @abstractmethod
-    def run(self):
-        """ not implemented """
-
-
-class NicknameThread(AppThread):
-
-    def run(self):
-        with app.app_context():
-            with get_session() as db:
-                team = get_team(
-                    db=db,
-                    slack_team_id=self.request.form['team_id'],
-                    slack_team_domain=self.request.form['team_domain']
-                )
-                app_user = get_app_user(
-                    db=db,
-                    team_id=team.id,
-                    slack_user_id=self.request.form['user_id'],
-                    slack_user_name=self.request.form['user_name']
-                )
-                app_user.nickname = self.request.form['text']
-
-                assert requests.post(
-                    self.request.form['response_url'],
-                    data=json.dumps({
-                        'response_type': 'in_channel',
-                        'text': f'<@{app_user.slack_user_id}> changed his nickname to _{app_user.nickname}_'
-                    }),
-                    headers={
-                        'Content-Type': 'application/json'
-                    }
-                ).status_code == 200
-
-
 @app.route('/nickname', methods=['POST'])
 @authorize
 def nickname():
     # TODO limit length, validation, also tests
     # TODO make it clear that this command is available
-    NicknameThread(request.__copy__()).start()
-    return f':heavy_check_mark: Your nickname will be changed to _{request.form["text"]}_', 200
+    with get_session() as db:
+        team = get_team(db=db, slack_team_id=request.form['team_id'], slack_team_domain=request.form['team_domain'])
+        app_user = get_app_user(db=db, team_id=team.id, slack_user_id=request.form['user_id'],
+                                slack_user_name=request.form['user_name'])
+        app_user.nickname = request.form['text']
+        return {
+            'response_type': 'in_channel',
+            'text': f'<@{app_user.slack_user_id}> changed his nickname to _{app_user.nickname}_'
+        }
 
 
 @app.route('/won', methods=['POST'])
