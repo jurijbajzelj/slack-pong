@@ -53,7 +53,7 @@ def before_request():
 def after_request(response):
     diff = time.time() - g.start
     if diff > 0.5:
-        sentry_sdk.capture_exception(TimeoutException(response))
+        sentry_sdk.capture_exception(TimeoutException(response))  # pragma: nocover TODO
     return response
 
 
@@ -63,7 +63,7 @@ def handle_internal_server_error(e):
         return 'Bad Request', 400
     elif isinstance(e.original_exception, AuthorizeException):
         return 'Unauthorized', 401
-    return 'Internal Server Error', 500
+    return 'Internal Server Error', 500  # pragma: nocover TODO
 
 
 @app.route('/oauth', methods=['GET'])
@@ -226,4 +226,4 @@ def reset():
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run()  # pragma: nocover
