@@ -1,19 +1,21 @@
-from flask import Flask, request
-from functools import wraps
-import requests
+import hashlib
+import hmac
 import json
 import os
-from database import get_session, get_display_name, get_team, get_channel, get_app_user, insert_match
-import hmac
-import hashlib
-from elo import get_leaderboard, PlayerStats
-from types import SimpleNamespace
-from typing import List
-from datetime import datetime
-
+import requests
 import sentry_sdk
+import time
+
+from flask import g, Flask, request
+from functools import wraps
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+from types import SimpleNamespace
+from typing import List
+
+from elo import get_leaderboard, PlayerStats
+from database import datetime, get_session, get_display_name, get_team, get_channel, get_app_user, insert_match
+
 
 SENTRY_DSN = os.getenv('SLACK_APP_PONG_SENTRY_DSN')  # should not be configured when test are running
 sentry_sdk.init(
@@ -42,19 +44,24 @@ class TimeoutException(Exception):
     pass
 
 
+@app.before_request
+def before_request():
+    g.start = time.time()
+
+
+@app.after_request
+def after_request(response):
+    diff = time.time() - g.start
+    if diff > 0.5:
+        sentry_sdk.capture_exception(TimeoutException(response))
+    return response
+
+
 @app.errorhandler(500)
 def handle_internal_server_error(e):
-    if isinstance(e.original_exception, TimeoutException):
-        sentry_sdk.capture_exception(e)
-        return {
-            'response_type': 'in_channel',
-            'text': '`Looks like the server is taking to long to respond, please try again.`'
-        }
-    elif isinstance(e.original_exception, ValidateException):
-        sentry_sdk.capture_exception(e)
+    if isinstance(e.original_exception, ValidateException):
         return 'Bad Request', 400
     elif isinstance(e.original_exception, AuthorizeException):
-        sentry_sdk.capture_exception(e)
         return 'Unauthorized', 401
     return 'Internal Server Error', 500
 
@@ -70,7 +77,7 @@ def oauth():
         'client_id': CLIENT_ID,
         'client_secret': CLIENT_SECRET
     })
-    response = json.loads(r.text)
+    json.loads(r.text)
     return 'redirect somewhere'  # TODO make an actual redirection and test this out
 
 

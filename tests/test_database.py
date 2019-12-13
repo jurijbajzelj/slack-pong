@@ -1,6 +1,6 @@
 import pytest
 from database import get_session, get_channel
-from models import Channel, Team
+from models import Team
 
 
 @pytest.mark.usefixtures('prepare_db')

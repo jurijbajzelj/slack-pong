@@ -1,19 +1,38 @@
-from models import Match
-from undecorated import undecorated
 import json
+import pytest
+
+from undecorated import undecorated
+
+from models import Match
 
 
-def test_authorization(client):
-    raw_data = b'token=123&team_id=456&team_domain=abc&channel_id=789&channel_name=ch_name&user_id=ABC'
+@pytest.mark.usefixtures('prepare_db')
+def test_authorize_validate(client, monkeypatch):
     headers = {
-        'X-Slack-Signature': 'v0=1a2eeb0ac2a8a562cc98047a50bef95639047e7d2aeb54cb5a88a40617dedb57',
+        'X-Slack-Signature': 'v0=1a42e11e6acd65647b826eed12be835247f0754f4a285f70a366d4a8472579da',
         'X-Slack-Request-Timestamp': '1571051763'
     }
-    assert client.post('/won', data=raw_data, headers=headers).status_code == 400  # Bad Request
+    data = {
+        'token': '123',
+        'team_id': '456',
+        'team_domain': 'abc',
+        'channel_id': '789',
+        'channel_name': 'ch_name',
+        'user_id': 'ABC',
+        'user_name': 'DEF',
+        'text': 'some_text'
+    }
+    assert client.post('/reset', data=data, headers=headers).status_code == 200
 
-    # change last digit of a timestamp
-    headers.update({'X-Slack-Request-Timestamp': '1571051764'})
-    assert client.post('/won', data=raw_data, headers=headers).status_code == 401  # Unauthorized
+    with monkeypatch.context() as m:  # change last digit of a timestamp
+        m.setitem(headers, 'X-Slack-Request-Timestamp', '1571051764')
+        assert client.post('/won', data=data, headers=headers).status_code == 401  # Unauthorized
+
+    with monkeypatch.context() as m:
+        m.delitem(data, 'user_name')  # this should case HTTP 400 response
+        # modify signature so that request passes authorization stage
+        m.setitem(headers, 'X-Slack-Signature', 'v0=ba48c2992cc5b2c964af29c50c242969860fbdf410c5502c0b7d3107eb059cef')
+        assert client.post('/won', data=data, headers=headers).status_code == 400  # Bad Request
 
 
 def test_db(prepare_db, db_session):
@@ -30,7 +49,6 @@ def test_nickname(client):
 
 
 def test_won(prepare_db, client):
-    # TODO do this test also when migration to thread is done
     undecorate(client.application, 'won')
 
     resp = client.post(
