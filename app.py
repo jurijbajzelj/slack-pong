@@ -4,7 +4,6 @@ import requests
 import json
 import os
 from database import get_session, get_display_name, get_team, get_channel, get_app_user, insert_match
-from models import OAuth
 import hmac
 import hashlib
 from elo import get_leaderboard, PlayerStats
@@ -71,21 +70,8 @@ def oauth():
         'client_id': CLIENT_ID,
         'client_secret': CLIENT_SECRET
     })
-
     response = json.loads(r.text)
-
-    with get_session() as db_session:
-        oauth = OAuth(
-            scope=response['scope'],
-            enterprise_id=response['enterprise_id'],
-            access_token=response['access_token'],
-            team_id=response['team_id'],
-            team_name=response['team_name'],
-            user_id=response['user_id']
-        )
-        db_session.add(oauth)
-
-    return 'redirect somewhere'
+    return 'redirect somewhere'  # TODO make an actual redirection and test this out
 
 
 def authorize(f):
