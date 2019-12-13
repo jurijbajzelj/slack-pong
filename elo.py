@@ -68,6 +68,7 @@ def get_leaderboard(db, channel_id: int):
     lost = defaultdict(lambda: 0)
     for match in match_list[:-1]:
         update_state(match=match, elo=elo, played=played, won=won, lost=lost)
+    sorted_by_elo = sorted(elo.items(), key=lambda kv: kv[1], reverse=True)
 
     elo_new = deepcopy(elo)
     played_new = deepcopy(played)
@@ -75,12 +76,12 @@ def get_leaderboard(db, channel_id: int):
     lost_new = deepcopy(lost)
     if match_list:
         update_state(match=match_list[-1], elo=elo_new, played=played_new, won=won_new, lost=lost_new)
+    sorted_by_elo_new = sorted(elo_new.items(), key=lambda kv: kv[1], reverse=True)
 
-    sorted_by_elo = sorted(elo_new.items(), key=lambda kv: kv[1], reverse=True)
     return [PlayerStats(
         app_user_id=app_user_id,
         elo=int(elo),
         played=played_new[app_user_id],
         won=won_new[app_user_id],
         lost=lost_new[app_user_id]
-    ) for app_user_id, elo in sorted_by_elo]
+    ) for app_user_id, elo in sorted_by_elo_new]
