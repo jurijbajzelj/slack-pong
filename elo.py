@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import List
 from models import Match, Channel
 
@@ -19,7 +20,7 @@ def calculate_elo(old, exp, score, k=32):
     :param score: The actual score for this match
     :param k: The k-factor for Elo (default: 32)
     """
-    return old + k * (score - exp)
+    return old + k * (score - exp) + 1  # for every match played, player is granted +1 bonus points
 
 
 class PlayerStats:
@@ -44,12 +45,10 @@ def get_leaderboard(db, channel_id: int):
         Match.timestamp >= Channel.rankings_reset_at
     ).all()
 
-    player_ids = set(match.winner_id for match in match_list).union(match.loser_id for match in match_list)
-
-    elo_dict = {player_id: 1500 for player_id in player_ids}
-    matches_played = {player_id: 0 for player_id in player_ids}
-    matches_won = {player_id: 0 for player_id in player_ids}
-    matches_lost = {player_id: 0 for player_id in player_ids}
+    elo_dict = defaultdict(lambda: 1500)
+    matches_played = defaultdict(lambda: 0)
+    matches_won = defaultdict(lambda: 0)
+    matches_lost = defaultdict(lambda: 0)
 
     for match in match_list:
         elo_dict[match.winner_id] = calculate_elo(
@@ -66,10 +65,6 @@ def get_leaderboard(db, channel_id: int):
         matches_played[match.loser_id] += 1
         matches_won[match.winner_id] += 1
         matches_lost[match.loser_id] += 1
-
-    # for every match played, player is granted +1 bonus points
-    for player_id, elo in elo_dict.items():
-        elo_dict[player_id] = elo + matches_played[player_id]
 
     sorted_by_elo = sorted(elo_dict.items(), key=lambda kv: kv[1], reverse=True)
     return [PlayerStats(
