@@ -1,4 +1,5 @@
 from collections import defaultdict
+from copy import deepcopy
 from typing import List
 from models import Match, Channel
 
@@ -39,38 +40,48 @@ class PlayerStats:
         return self
 
 
+def update_state(match: Match, elo: dict, played: dict, won: dict, lost: dict):
+    elo[match.winner_id] = calculate_elo(
+        old=elo[match.winner_id],
+        exp=calculate_expected(player_1_elo=elo[match.winner_id], player_2_elo=elo[match.loser_id]),
+        score=1
+    )
+    elo[match.loser_id] = calculate_elo(
+        old=elo[match.loser_id],
+        exp=calculate_expected(player_1_elo=elo[match.loser_id], player_2_elo=elo[match.winner_id]),
+        score=0
+    )
+    played[match.winner_id] += 1
+    played[match.loser_id] += 1
+    won[match.winner_id] += 1
+    lost[match.loser_id] += 1
+
+
 def get_leaderboard(db, channel_id: int):
     match_list = db.query(Match).join(Channel).filter(
         Channel.id == channel_id,
         Match.timestamp >= Channel.rankings_reset_at
     ).all()
 
-    elo_dict = defaultdict(lambda: 1500)
-    matches_played = defaultdict(lambda: 0)
-    matches_won = defaultdict(lambda: 0)
-    matches_lost = defaultdict(lambda: 0)
+    elo = defaultdict(lambda: 1500)
+    played = defaultdict(lambda: 0)
+    won = defaultdict(lambda: 0)
+    lost = defaultdict(lambda: 0)
+    for match in match_list[:-1]:
+        update_state(match=match, elo=elo, played=played, won=won, lost=lost)
 
-    for match in match_list:
-        elo_dict[match.winner_id] = calculate_elo(
-            old=elo_dict[match.winner_id],
-            exp=calculate_expected(player_1_elo=elo_dict[match.winner_id], player_2_elo=elo_dict[match.loser_id]),
-            score=1
-        )
-        elo_dict[match.loser_id] = calculate_elo(
-            old=elo_dict[match.loser_id],
-            exp=calculate_expected(player_1_elo=elo_dict[match.loser_id], player_2_elo=elo_dict[match.winner_id]),
-            score=0
-        )
-        matches_played[match.winner_id] += 1
-        matches_played[match.loser_id] += 1
-        matches_won[match.winner_id] += 1
-        matches_lost[match.loser_id] += 1
+    elo_new = deepcopy(elo)
+    played_new = deepcopy(played)
+    won_new = deepcopy(won)
+    lost_new = deepcopy(lost)
+    if match_list:
+        update_state(match=match_list[-1], elo=elo_new, played=played_new, won=won_new, lost=lost_new)
 
-    sorted_by_elo = sorted(elo_dict.items(), key=lambda kv: kv[1], reverse=True)
+    sorted_by_elo = sorted(elo_new.items(), key=lambda kv: kv[1], reverse=True)
     return [PlayerStats(
         app_user_id=app_user_id,
         elo=int(elo),
-        played=matches_played[app_user_id],
-        won=matches_won[app_user_id],
-        lost=matches_lost[app_user_id]
+        played=played_new[app_user_id],
+        won=won_new[app_user_id],
+        lost=lost_new[app_user_id]
     ) for app_user_id, elo in sorted_by_elo]
