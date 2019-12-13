@@ -1,6 +1,5 @@
 from collections import defaultdict
 from copy import deepcopy
-from typing import List
 from models import Match, Channel
 
 
