@@ -178,7 +178,7 @@ def get_leaderboard_lines(db, leaderboard: List[PlayerStats]):
         win_percentage = str(x.win_percentage)[:longest.win_percentage].rjust(longest.win_percentage)
         streak = str(x.streak)[:longest.streak].rjust(longest.streak)
         line = f'[ {elo} ] {counter}. {name} {move} | {won} | {lost} | {played} | {win_percentage} | {streak}'
-        lines.append('-'*len(line))
+        lines.append('―'*len(line))
         lines.append(line)
     return lines
 
