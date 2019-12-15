@@ -41,15 +41,17 @@ class PlayerStats:
         self.won = won
         self.win_percentage = '{:.1f}%'.format(won / played * 100)
         if move == 0:
-            self.move = '-'
+            self.move = ''
         elif move > 0:
             self.move = f'{move}↑'
         else:
             self.move = f'{abs(move)}↓'
-        if streak > 0:
-            self.streak = f'{streak} W'
+        if streak >= 2:
+            self.streak = f'{streak} Won'
+        elif streak <= -2:
+            self.streak = f'{abs(streak)} Lost'
         else:
-            self.streak = f'{abs(streak)} L'
+            self.streak = ''
 
     def set_name(self, name: str):
         assert isinstance(name, str)

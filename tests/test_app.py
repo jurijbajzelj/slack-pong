@@ -67,9 +67,11 @@ def test_won(client):
     assert resp.status_code == 200
     resp = json.loads(resp.get_data())['text'].strip('```').replace('\n', '')
     assert resp == (
-        '[  ELO ] #. Name                       #↑/↓ Won Lost Played  Win % Streak'
-        '[ 1517 ] 1. gregor                        -   1    0      1 100.0%    1 W'
-        '[ 1485 ] 2. some_player_with_long_name    -   0    1      1   0.0%    1 L'
+        '[  ELO ] #. Name                       #↑/↓ | W | L | GP |  Win % | Streak'
+        '--------------------------------------------------------------------------'
+        '[ 1517 ] 1. gregor                          | 1 | 0 |  1 | 100.0% |       '
+        '--------------------------------------------------------------------------'
+        '[ 1485 ] 2. some_player_with_long_name      | 0 | 1 |  1 |   0.0% |       '
     )
 
     resp = client.post(
@@ -87,10 +89,13 @@ def test_won(client):
     assert resp.status_code == 200
     resp = json.loads(resp.get_data())['text'].strip('```').replace('\n', '')
     assert resp == (
-        '[  ELO ] #. Name                       #↑/↓ Won Lost Played  Win % Streak'
-        '[ 1517 ] 1. gregor                        -   1    0      1 100.0%    1 W'
-        '[ 1503 ] 2. some_player_with_long_name    -   1    1      2  50.0%    1 W'
-        '[ 1485 ] 3. yuri                          -   0    1      1   0.0%    1 L'
+        '[  ELO ] #. Name                       #↑/↓ | W | L | GP |  Win % | Streak'
+        '--------------------------------------------------------------------------'
+        '[ 1517 ] 1. gregor                          | 1 | 0 |  1 | 100.0% |       '
+        '--------------------------------------------------------------------------'
+        '[ 1503 ] 2. some_player_with_long_name      | 1 | 1 |  2 |  50.0% |       '
+        '--------------------------------------------------------------------------'
+        '[ 1485 ] 3. yuri                            | 0 | 1 |  1 |   0.0% |       '
     )
 
     resp = client.post(
@@ -108,10 +113,13 @@ def test_won(client):
     assert resp.status_code == 200
     resp = json.loads(resp.get_data())['text'].strip('```').replace('\n', '')
     assert resp == (
-        '[  ELO ] #. Name                       #↑/↓ Won Lost Played Win % Streak'
-        '[ 1503 ] 1. yuri                         2↑   1    1      2 50.0%    1 W'
-        '[ 1503 ] 2. some_player_with_long_name    -   1    1      2 50.0%    1 W'
-        '[ 1501 ] 3. gregor                       2↓   1    1      2 50.0%    1 L'
+        '[  ELO ] #. Name                       #↑/↓ | W | L | GP | Win % | Streak'
+        '-------------------------------------------------------------------------'
+        '[ 1503 ] 1. yuri                         2↑ | 1 | 1 |  2 | 50.0% |       '
+        '-------------------------------------------------------------------------'
+        '[ 1503 ] 2. some_player_with_long_name      | 1 | 1 |  2 | 50.0% |       '
+        '-------------------------------------------------------------------------'
+        '[ 1501 ] 3. gregor                       2↓ | 1 | 1 |  2 | 50.0% |       '
     )
 
     resp = client.post(
@@ -129,8 +137,11 @@ def test_won(client):
     assert resp.status_code == 200
     resp = json.loads(resp.get_data())['text'].strip('```').replace('\n', '')
     assert resp == (
-        '[  ELO ] #. Name                       #↑/↓ Won Lost Played Win % Streak'
-        '[ 1520 ] 1. yuri                          -   2    1      3 66.7%    2 W'
-        '[ 1503 ] 2. some_player_with_long_name    -   1    1      2 50.0%    1 W'
-        '[ 1487 ] 3. gregor                        -   1    2      3 33.3%    2 L'
+        '[  ELO ] #. Name                       #↑/↓ | W | L | GP | Win % | Streak'
+        '-------------------------------------------------------------------------'
+        '[ 1520 ] 1. yuri                            | 2 | 1 |  3 | 66.7% |  2 Won'
+        '-------------------------------------------------------------------------'
+        '[ 1503 ] 2. some_player_with_long_name      | 1 | 1 |  2 | 50.0% |       '
+        '-------------------------------------------------------------------------'
+        '[ 1487 ] 3. gregor                          | 1 | 2 |  3 | 33.3% | 2 Lost'
     )
