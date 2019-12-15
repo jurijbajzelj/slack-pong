@@ -48,7 +48,8 @@ def test_nickname(client):
     assert client.post('/nickname').status_code == 400  # bad request
 
 
-def test_won(prepare_db, client):
+@pytest.mark.usefixtures('prepare_db')
+def test_won(client):
     undecorate(client.application, 'won')
 
     resp = client.post(
@@ -66,9 +67,9 @@ def test_won(prepare_db, client):
     assert resp.status_code == 200
     resp = json.loads(resp.get_data())['text'].strip('```').replace('\n', '')
     assert resp == (
-        '[  ELO ] #. Name                       Won Lost'
-        '[ 1517 ] 1. gregor                       1    0'
-        '[ 1485 ] 2. some_player_with_long_name   0    1'
+        '[  ELO ] #. Name                       #↑/↓ Won Lost Played  Win % Streak'
+        '[ 1517 ] 1. gregor                        -   1    0      1 100.0%    1 W'
+        '[ 1485 ] 2. some_player_with_long_name    -   0    1      1   0.0%    1 L'
     )
 
     resp = client.post(
@@ -86,8 +87,50 @@ def test_won(prepare_db, client):
     assert resp.status_code == 200
     resp = json.loads(resp.get_data())['text'].strip('```').replace('\n', '')
     assert resp == (
-        '[  ELO ] #. Name                       Won Lost'
-        '[ 1517 ] 1. gregor                       1    0'
-        '[ 1503 ] 2. some_player_with_long_name   1    1'
-        '[ 1485 ] 3. yuri                         0    1'
+        '[  ELO ] #. Name                       #↑/↓ Won Lost Played  Win % Streak'
+        '[ 1517 ] 1. gregor                        -   1    0      1 100.0%    1 W'
+        '[ 1503 ] 2. some_player_with_long_name    -   1    1      2  50.0%    1 W'
+        '[ 1485 ] 3. yuri                          -   0    1      1   0.0%    1 L'
+    )
+
+    resp = client.post(
+        '/won',
+        data={
+            'user_id': 'yuri_id',
+            'user_name': 'yuri',
+            'text': '<@gregor_id|gregor>',
+            'team_id': 'team_1',
+            'team_domain': 'some-team',
+            'channel_id': 'channel_1',
+            'channel_name': 'some-channel'
+        }
+    )
+    assert resp.status_code == 200
+    resp = json.loads(resp.get_data())['text'].strip('```').replace('\n', '')
+    assert resp == (
+        '[  ELO ] #. Name                       #↑/↓ Won Lost Played Win % Streak'
+        '[ 1503 ] 1. yuri                         2↑   1    1      2 50.0%    1 W'
+        '[ 1503 ] 2. some_player_with_long_name    -   1    1      2 50.0%    1 W'
+        '[ 1501 ] 3. gregor                       2↓   1    1      2 50.0%    1 L'
+    )
+
+    resp = client.post(
+        '/won',
+        data={
+            'user_id': 'yuri_id',
+            'user_name': 'yuri',
+            'text': '<@gregor_id|gregor>',
+            'team_id': 'team_1',
+            'team_domain': 'some-team',
+            'channel_id': 'channel_1',
+            'channel_name': 'some-channel'
+        }
+    )
+    assert resp.status_code == 200
+    resp = json.loads(resp.get_data())['text'].strip('```').replace('\n', '')
+    assert resp == (
+        '[  ELO ] #. Name                       #↑/↓ Won Lost Played Win % Streak'
+        '[ 1520 ] 1. yuri                          -   2    1      3 66.7%    2 W'
+        '[ 1503 ] 2. some_player_with_long_name    -   1    1      2 50.0%    1 W'
+        '[ 1487 ] 3. gregor                        -   1    2      3 33.3%    2 L'
     )

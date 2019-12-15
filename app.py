@@ -173,13 +173,21 @@ def won():
                 'counter': len(str(len(leaderboard))),
                 'name': len('Name'),
                 'won': len('Won'),
-                'lost': len('Lost')
+                'lost': len('Lost'),
+                'move': len('#↑/↓'),
+                'played': len('Played'),
+                'win_percentage': len('Win %'),
+                'streak': len('Streak')
             })
             for x in updated_leaderboard:
                 longest.elo = max(longest.elo, len(str(x.elo)))
                 longest.name = max(longest.name, len(str(x.name)))
                 longest.won = max(longest.won, len(str(x.won)))
                 longest.lost = max(longest.lost, len(str(x.lost)))
+                longest.move = max(longest.move, len(str(x.move)))
+                longest.played = max(longest.played, len(str(x.played)))
+                longest.win_percentage = max(longest.win_percentage, len(str(x.win_percentage)))
+                longest.streak = max(longest.streak, len(str(x.streak)))
 
             lines = []
             elo = 'ELO'[:longest.elo].rjust(longest.elo)
@@ -187,14 +195,22 @@ def won():
             name = 'Name'[:longest.name].ljust(longest.name)
             won = 'Won'[:longest.won].rjust(longest.won)
             lost = 'Lost'[:longest.lost].rjust(longest.lost)
-            lines.append(f'[ {elo} ] {counter}. {name} {won} {lost}')
+            move = '#↑/↓'[:longest.move].rjust(longest.move)
+            played = 'Played'[:longest.played].rjust(longest.played)
+            win_percentage = 'Win %'[:longest.win_percentage].rjust(longest.win_percentage)
+            streak = 'Streak'[:longest.streak].rjust(longest.streak)
+            lines.append(f'[ {elo} ] {counter}. {name} {move} {won} {lost} {played} {win_percentage} {streak}')
             for i, x in enumerate(updated_leaderboard, start=1):
                 elo = str(x.elo)[:longest.elo].rjust(longest.elo)
                 counter = str(i)[:longest.counter].rjust(longest.counter)
                 name = x.name[:longest.name].ljust(longest.name)
                 won = str(x.won)[:longest.won].rjust(longest.won)
                 lost = str(x.lost)[:longest.lost].rjust(longest.lost)
-                lines.append(f'[ {elo} ] {counter}. {name} {won} {lost}')
+                move = str(x.move)[:longest.move].rjust(longest.move)
+                played = str(x.played)[:longest.played].rjust(longest.played)
+                win_percentage = str(x.win_percentage)[:longest.win_percentage].rjust(longest.win_percentage)
+                streak = str(x.streak)[:longest.streak].rjust(longest.streak)
+                lines.append(f'[ {elo} ] {counter}. {name} {move} {won} {lost} {played} {win_percentage} {streak}')
             return lines
 
         leaderboard = get_leaderboard(db=db, channel_id=channel.id)
