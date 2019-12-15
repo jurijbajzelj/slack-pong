@@ -51,6 +51,7 @@ def test_nickname(client):
 @pytest.mark.usefixtures('prepare_db')
 def test_won(client):
     undecorate(client.application, 'won')
+    undecorate(client.application, 'revert')
 
     resp = client.post(
         '/won',
@@ -144,4 +145,30 @@ def test_won(client):
         '[ 1503 ] 2. some_player_with_long_name      | 1 | 1 |  2 | 50.0% |       '
         '-------------------------------------------------------------------------'
         '[ 1487 ] 3. gregor                          | 1 | 2 |  3 | 33.3% | 2 Lost'
+    )
+
+    resp = client.post(
+        '/revert',
+        data={
+            'user_id': 'yuri_id',
+            'user_name': 'yuri',
+            'text': '',
+            'team_id': 'team_1',
+            'team_domain': 'some-team',
+            'channel_id': 'channel_1',
+            'channel_name': 'some-channel'
+        }
+    )
+    assert resp.status_code == 200
+    resp = json.loads(resp.get_data())['text'].replace('\n', '')
+    assert resp == (
+        'Match reverted. Here is the corrected leaderboard:```'
+        '[  ELO ] #. Name                       #↑/↓ | W | L | GP | Win % | Streak'
+        '-------------------------------------------------------------------------'
+        '[ 1503 ] 1. yuri                         2↑ | 1 | 1 |  2 | 50.0% |       '
+        '-------------------------------------------------------------------------'
+        '[ 1503 ] 2. some_player_with_long_name      | 1 | 1 |  2 | 50.0% |       '
+        '-------------------------------------------------------------------------'
+        '[ 1501 ] 3. gregor                       2↓ | 1 | 1 |  2 | 50.0% |       '
+        '```'
     )

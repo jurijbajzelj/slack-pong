@@ -83,3 +83,12 @@ def insert_match(db, channel_id: int, winner_id: int, loser_id: int):
     db.add(match)
     db.flush()  # TODO is flush needed
     return match
+
+
+def get_last_match(db, channel_id: int, winner_id: int):
+    assert isinstance(channel_id, int)
+    assert isinstance(winner_id, int)
+    return db.query(Match).filter(
+        Match.channel_id == channel_id,
+        Match.winner_id == winner_id
+    ).order_by(Match.id.desc()).first()

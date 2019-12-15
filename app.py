@@ -14,7 +14,9 @@ from types import SimpleNamespace
 from typing import List
 
 from elo import get_leaderboard, PlayerStats
-from database import datetime, get_session, get_display_name, get_team, get_channel, get_app_user, insert_match
+from database import (
+    datetime, get_session, get_display_name, get_team, get_channel, get_app_user, insert_match, get_last_match
+)
 
 
 SENTRY_DSN = os.getenv('SLACK_APP_PONG_SENTRY_DSN')  # should not be configured when test are running
@@ -130,6 +132,57 @@ def nickname():
         }
 
 
+def get_leaderboard_lines(db, leaderboard: List[PlayerStats]):
+    updated_leaderboard = [x.set_name(get_display_name(db=db, app_user_id=x.app_user_id)) for x in leaderboard]
+    longest = SimpleNamespace(**{
+        'elo': len('ELO'),
+        'counter': len(str(len(leaderboard))),
+        'name': len('Name'),
+        'won': 1,  # len('W')
+        'lost': 1,  # len('L')
+        'move': len('#↑/↓'),
+        'played': 2,  # len('GP')
+        'win_percentage': len('Win %'),
+        'streak': len('Streak')
+    })
+    for x in updated_leaderboard:
+        longest.elo = max(longest.elo, len(str(x.elo)))
+        longest.name = max(longest.name, len(str(x.name)))
+        longest.won = max(longest.won, len(str(x.won)))
+        longest.lost = max(longest.lost, len(str(x.lost)))
+        longest.move = max(longest.move, len(str(x.move)))
+        longest.played = max(longest.played, len(str(x.played)))
+        longest.win_percentage = max(longest.win_percentage, len(str(x.win_percentage)))
+        longest.streak = max(longest.streak, len(str(x.streak)))
+
+    lines = []
+    elo = 'ELO'[:longest.elo].rjust(longest.elo)
+    counter = '#'[:longest.counter].rjust(longest.counter)
+    name = 'Name'[:longest.name].ljust(longest.name)
+    won = 'W'[:longest.won].rjust(longest.won)
+    lost = 'L'[:longest.lost].rjust(longest.lost)
+    move = '#↑/↓'[:longest.move].rjust(longest.move)
+    played = 'GP'[:longest.played].rjust(longest.played)
+    win_percentage = 'Win %'[:longest.win_percentage].rjust(longest.win_percentage)
+    streak = 'Streak'[:longest.streak].rjust(longest.streak)
+    line = f'[ {elo} ] {counter}. {name} {move} | {won} | {lost} | {played} | {win_percentage} | {streak}'
+    lines.append(line)
+    for i, x in enumerate(updated_leaderboard, start=1):
+        elo = str(x.elo)[:longest.elo].rjust(longest.elo)
+        counter = str(i)[:longest.counter].rjust(longest.counter)
+        name = x.name[:longest.name].ljust(longest.name)
+        won = str(x.won)[:longest.won].rjust(longest.won)
+        lost = str(x.lost)[:longest.lost].rjust(longest.lost)
+        move = str(x.move)[:longest.move].rjust(longest.move)
+        played = str(x.played)[:longest.played].rjust(longest.played)
+        win_percentage = str(x.win_percentage)[:longest.win_percentage].rjust(longest.win_percentage)
+        streak = str(x.streak)[:longest.streak].rjust(longest.streak)
+        line = f'[ {elo} ] {counter}. {name} {move} | {won} | {lost} | {played} | {win_percentage} | {streak}'
+        lines.append('-'*len(line))
+        lines.append(line)
+    return lines
+
+
 @app.route('/won', methods=['POST'])
 @authorize
 @validate
@@ -166,62 +219,44 @@ def won():
         loser = get_app_user(db, team_id=team.id, slack_user_id=loser_slack_id, slack_user_name=loser_slack_name)
         insert_match(db, channel_id=channel.id, winner_id=winner.id, loser_id=loser.id)
 
-        def get_leaderboard_lines(db, leaderboard: List[PlayerStats]):
-            updated_leaderboard = [x.set_name(get_display_name(db=db, app_user_id=x.app_user_id)) for x in leaderboard]
-            longest = SimpleNamespace(**{
-                'elo': len('ELO'),
-                'counter': len(str(len(leaderboard))),
-                'name': len('Name'),
-                'won': 1,  # len('W')
-                'lost': 1,  # len('L')
-                'move': len('#↑/↓'),
-                'played': 2,  # len('GP')
-                'win_percentage': len('Win %'),
-                'streak': len('Streak')
-            })
-            for x in updated_leaderboard:
-                longest.elo = max(longest.elo, len(str(x.elo)))
-                longest.name = max(longest.name, len(str(x.name)))
-                longest.won = max(longest.won, len(str(x.won)))
-                longest.lost = max(longest.lost, len(str(x.lost)))
-                longest.move = max(longest.move, len(str(x.move)))
-                longest.played = max(longest.played, len(str(x.played)))
-                longest.win_percentage = max(longest.win_percentage, len(str(x.win_percentage)))
-                longest.streak = max(longest.streak, len(str(x.streak)))
-
-            lines = []
-            elo = 'ELO'[:longest.elo].rjust(longest.elo)
-            counter = '#'[:longest.counter].rjust(longest.counter)
-            name = 'Name'[:longest.name].ljust(longest.name)
-            won = 'W'[:longest.won].rjust(longest.won)
-            lost = 'L'[:longest.lost].rjust(longest.lost)
-            move = '#↑/↓'[:longest.move].rjust(longest.move)
-            played = 'GP'[:longest.played].rjust(longest.played)
-            win_percentage = 'Win %'[:longest.win_percentage].rjust(longest.win_percentage)
-            streak = 'Streak'[:longest.streak].rjust(longest.streak)
-            line = f'[ {elo} ] {counter}. {name} {move} | {won} | {lost} | {played} | {win_percentage} | {streak}'
-            lines.append(line)
-            for i, x in enumerate(updated_leaderboard, start=1):
-                elo = str(x.elo)[:longest.elo].rjust(longest.elo)
-                counter = str(i)[:longest.counter].rjust(longest.counter)
-                name = x.name[:longest.name].ljust(longest.name)
-                won = str(x.won)[:longest.won].rjust(longest.won)
-                lost = str(x.lost)[:longest.lost].rjust(longest.lost)
-                move = str(x.move)[:longest.move].rjust(longest.move)
-                played = str(x.played)[:longest.played].rjust(longest.played)
-                win_percentage = str(x.win_percentage)[:longest.win_percentage].rjust(longest.win_percentage)
-                streak = str(x.streak)[:longest.streak].rjust(longest.streak)
-                line = f'[ {elo} ] {counter}. {name} {move} | {won} | {lost} | {played} | {win_percentage} | {streak}'
-                lines.append('-'*len(line))
-                lines.append(line)
-            return lines
-
         leaderboard = get_leaderboard(db=db, channel_id=channel.id)
         leaderboard_lines = get_leaderboard_lines(db=db, leaderboard=leaderboard)
         return {
             'response_type': 'in_channel',
             'text': '```' + '\n'.join(leaderboard_lines) + '```'
         }
+
+
+@app.route('/revert', methods=['POST'])
+@authorize
+@validate
+def revert():
+    winner_slack_id = request.form['user_id']
+    winner_slack_name = request.form['user_name']
+    team_id = request.form['team_id']
+    team_domain = request.form['team_domain']
+    channel_id = request.form['channel_id']
+    channel_name = request.form['channel_name']
+
+    with get_session() as db:
+        team = get_team(db=db, slack_team_id=team_id, slack_team_domain=team_domain)
+        channel = get_channel(db=db, team_id=team.id, slack_channel_id=channel_id, slack_channel_name=channel_name)
+        winner = get_app_user(db=db, team_id=team.id, slack_user_id=winner_slack_id, slack_user_name=winner_slack_name)
+        last_match = get_last_match(db=db, channel_id=channel.id, winner_id=winner.id)
+        if last_match is None:
+            return {
+                'response_type': 'in_channel',
+                'text': 'Cannot revert your latest win since you haven\'t won a match yet.'
+            }
+        else:
+            db.delete(last_match)
+            db.commit()
+            leaderboard = get_leaderboard(db=db, channel_id=channel.id)
+            leaderboard_lines = get_leaderboard_lines(db=db, leaderboard=leaderboard)
+            return {
+                'response_type': 'in_channel',
+                'text': 'Match reverted. Here is the corrected leaderboard:\n```' + '\n'.join(leaderboard_lines) + '```'
+            }
 
 
 @app.route('/reset', methods=['POST'])
